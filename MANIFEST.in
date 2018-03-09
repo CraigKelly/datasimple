@@ -1,0 +1,4 @@
+# Include readme and license files
+include README.*
+include LICENSE
+

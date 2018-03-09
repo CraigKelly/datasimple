@@ -110,4 +110,3 @@ def panic(excep):
     log(repr(excep))
     traceback.print_exception(*exc_args)
     sys.exit(1)
-

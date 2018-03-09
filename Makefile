@@ -12,12 +12,17 @@ test: lint
 
 .PHONY: clean
 clean:
-	rm -fr dist/ datasimple.egg-info/
+	rm -fr README.rst dist/ datasimple.egg-info/
 
 .PHONY: lint
 lint:
 	./lint
 
+.PHONY: readme
+readme: README.rst
+README.rst: README.md
+	pandoc -s README.md -o README.rst
+
 .PHONY: dist
-dist:
+dist: readme
 	@echo "TODO: distribute with twine"

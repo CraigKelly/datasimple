@@ -5,6 +5,9 @@ author: Craig Kelly
 
 # Introduction
 
+*Source Note:* The authoritative version of this file is the Markdown version.
+The RST version is automatically created from the Markdown by `pandoc`.
+
 This is an Apache licensed library and iset of command-line tools for simpler
 data processing tasks and pipelines. It is assumed that it will be used with
 tools like [dmk](https://github.com/CraigKely/dmk) and that serious work will
@@ -51,6 +54,9 @@ You should be developing in a virtualenv. Since you are probably forced to work
 in a Vagrant Ubuntu VM on a Windows machine, and you'll want to use the shared
 `/vagrant` folder, you might want to consider using pipenv and pyenv with the
 virtualenv plugin.
+
+Use `make test` for testing (which will also handle linting). In fact, see
+the `Makefile` for what we automate with this project.
 
 # Contributing
 

@@ -5,10 +5,11 @@ SHELL := /bin/bash
 
 # Some variables we always set
 BASEDIR=$(CURDIR)
+SCRIPTS=$(BASEDIR)/scripts
 
 .PHONY: test
 test: lint
-	./test
+	$(SCRIPTS)/test
 
 .PHONY: clean
 clean:
@@ -16,7 +17,7 @@ clean:
 
 .PHONY: lint
 lint:
-	./lint
+	$(SCRIPTS)/lint
 
 .PHONY: readme
 readme: README.rst
@@ -25,4 +26,4 @@ README.rst: README.md
 
 .PHONY: dist
 dist: readme
-	@echo "TODO: distribute with twine"
+	$(SCRIPTS)/dist

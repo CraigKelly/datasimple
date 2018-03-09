@@ -1,3 +1,7 @@
+# build dirs
+datasimple-*/
+
+
 # vim temp files
 .*.swp
 

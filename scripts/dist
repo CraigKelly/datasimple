@@ -6,6 +6,9 @@ SCRIPT_NAME=$(readlink -f "${BASH_SOURCE[0]}")
 sd=$(dirname "${SCRIPT_NAME}")
 SCRIPT_DIR="$( cd "${sd}" && pwd -P )"
 
-cd "${SCRIPT_DIR}"
+cd "${SCRIPT_DIR}/.."
 
-python3 setup.py test
+python3 setup.py sdist
+python3 setup.py bdist_wheel
+twine upload dist/*
+

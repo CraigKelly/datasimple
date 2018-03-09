@@ -1,57 +1,58 @@
-# pal-utils
+---
+title: datasimple README
+author: Craig Kelly
+---
 
-AMS IM PAL common utilities
+# Introduction
 
-## Installing
+This is an Apache licensed library and iset of command-line tools for simpler
+data processing tasks and pipelines. It is assumed that it will be used with
+tools like [dmk](https://github.com/CraigKely/dmk) and that serious work will
+be done with serious tools (like jupyterlab and scipy).
 
-This is for internal use only, so it is NOT on PyPI. However, you can install
-it from our local git. On an Ubuntu VM, you can install it (and dependencies)
-with:
+If it feels like a mishmash of functionality, that's because it is. This is
+mainly a collection of odds and ends that keep getting used in projects in a
+very specific analytics and data science team.
+
+# Installing
+
+The normal way:
 
 ```
-$ git clone git@github.build.ge.com:221019831/palutils.git
-$ pip3 install --user palutils
+$ pip install datasimple
 ```
 
-You'll note the use of pip3 because as of this writing (August 2017), `python`
-and `pip` are Python 2 links on Ubuntu. (According to the Python BDFL that's
-actually correct for now.)
+However, we use Python 3 and prefer user installs, so on a system like Ubuntu
+you might really want:
+
+```
+$ pip3 install --user --upgrade datasimple
+```
+
+HOWEVER, The CORRECT usage in a Pipfile controlled by pipenv.
 
 See below (in [Hacking](#hacking)) for installing in development mode if you
 need to make source code changes.
 
-## What you get
+# What you get
 
-The palutils library (see `./palutils`) and lots of handy scripts (see `./bin`).
+The datasimple library lots of handy scripts (see `./bin`).
 
-## Requirements
+# Requirements
 
 This is Python 3. Don't submit requests for Python 2 compatibility.
 
 See setup.py for dependencies (which will get installed automatically when you
 install this package with `pip`)
 
-## Hacking
+# Hacking
 
-You should be developing in a virtualenv. Since you are probably forced to
-work in a Vagrant Ubuntu VM on a Windows machine, and you'll want to use the
-shared `/vagrant` folder, you might want to consider using pyenv with the
-virtualenv plugin. That way you can do a one time setup. For example, since I
-have a Python 3.6.1 environment, I use that for development:
+You should be developing in a virtualenv. Since you are probably forced to work
+in a Vagrant Ubuntu VM on a Windows machine, and you'll want to use the shared
+`/vagrant` folder, you might want to consider using pipenv and pyenv with the
+virtualenv plugin.
 
-
-```
-$ cd palutils
-$ pyenv virtualenv 3.6.1 palutils-dev
-$ pyenv local palutils-dev
-$ pip install -e .
-```
-
-Now when I am my development directory, the virtualenv is automatically active.
-
-See also Contributing below for dev patterns
-
-## Contributing
+# Contributing
 
 The following guidelines are used when accepting external contributions:
 
@@ -69,8 +70,8 @@ for your user with `pip3 install --user --upgrade pylama`.
 
 You should also test using the `./test` script in the root of this repo. It
 runs tests using nosetests. Our setup also requires the package nose-exclude.
-However, the test script delegates via `setup.py` so you shouldn't need to worry
-about this.
+However, the test script delegates via `setup.py` so you shouldn't need to
+worry about this.
 
 Note that both pylama and nosetests have configuration specified in
 `setup.cfg`.

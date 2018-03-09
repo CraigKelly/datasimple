@@ -38,6 +38,7 @@ if __name__ == '__main__':
         packages=['datasimple'],
         scripts=_files('bin'),
 
+        python_requires='>=3.4',
         install_requires=[
             'colorclass>=2.2.0',
             'openpyxl>=2.4.8',

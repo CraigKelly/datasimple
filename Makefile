@@ -16,7 +16,7 @@ clean:
 	rm -fr README.rst dist/ datasimple.egg-info/
 
 .PHONY: lint
-lint:
+lint: readme
 	$(SCRIPTS)/lint
 
 .PHONY: readme

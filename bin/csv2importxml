@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+"""Read CSV on stdin and write our XML input format to stdout."""
+
+import argparse
+import csv
+import sys
+
+from datetime import datetime
+
+from datasimple.base import comppart
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-pn', '--part',
+        help='Part number field - used to create CompPart field',
+        required=False,
+        type=str,
+        default=''
+    )
+    parser.add_argument(
+        '-p', '--pretty',
+        help='Prettify output',
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '-x', '--stdlibxml',
+        help='Force use of xml.etree instead of lxml - FOR DEBUG ONLY',
+        default=False,
+        action='store_true'
+    )
+    args = parser.parse_args()
+
+    try:
+        if args.stdlibxml:
+            raise ValueError('stdlib forced!')
+
+        import lxml.etree as ET
+
+        top = ET.Element('Root', nsmap={'xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            return ET.tostring(top, pretty_print=args.pretty, standalone='yes', xml_declaration=True, encoding='UTF-8')
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+        print('WARNING: lxml is not installed, so stdlib xml will be used.', file=sys.stderr)
+
+        import xml.etree.ElementTree as ET  # import Element, SubElement, Comment, tostring
+        from xml.dom import minidom
+
+        top = ET.Element('Root', **{'xml:xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            if not args.pretty:
+                print('WARNING: NO NON-pretty printing unless you use lxml.', file=sys.stderr)
+            doc = minidom.parseString(ET.tostring(top))
+            doc.standalone = True
+            return doc.toprettyxml(indent='    ', encoding='UTF-8')
+
+    if args.pretty:
+        top.append(ET.Comment(
+            'Created with {lib:s} on {n:%Y-%b-%d} at {n:%H:%M:%S}'.format(
+                lib=ET.__name__,
+                n=datetime.now()
+        )))  # NOQA
+
+    keys = None
+
+    for rec in csv.DictReader(sys.stdin):
+        if not keys:
+            keys = sorted(rec.keys())
+
+        item = ET.SubElement(top, 'Row')
+
+        # keys in sorted order, AFTER CompPart (if we have it)
+        if args.part:
+            cp = ET.SubElement(item, 'CompPart')
+            cp.text = comppart(rec[args.part])
+        for ky in keys:
+            ele = ET.SubElement(item, ky.strip())
+            ele.text = rec[ky].strip()
+
+    txt = output()
+    if type(txt) is bytes:
+        txt = txt.decode('utf-8')
+    print(txt)
+
+
+if __name__ == '__main__':
+    main()

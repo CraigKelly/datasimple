@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+
+"""Given a DB file and a SQL file, query the DB and write a CSV file to stdout."""
+
+import argparse
+import csv
+import sys
+
+from datasimple.sqlite import connect
+from datasimple.cli import log, warn
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d', '--db',
+        help='sqlite3 database file',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-s', '--sql',
+        help='SQL query to execute (- is allowed)',
+        required=True,
+        type=str
+    )
+    args = parser.parse_args()
+
+    if args.sql == '-':
+        warn('Using stdin for SQL query')
+        sqlfh = sys.stdin
+    else:
+        sqlfh = open(args.sql)
+    sql = sqlfh.read()
+    if not sql:
+        raise ValueError('No SQL found in file {}'.format(args.sql))
+
+    warn('Opening database {}', args.db)
+    conn = connect(args.db)
+    if not conn:
+        raise ValueError('Could not connect to database "{}"'.format(args.db))
+
+    warn('EXEC: {}', sql.strip())
+    outp = csv.writer(sys.stdout)
+    cur = conn.execute(sql)
+    outp.writerow([d[0] for d in cur.description])
+    count = 0
+    for row in cur:
+        outp.writerow(list(row))
+        count += 1
+    warn('Records written: {:,d}', count)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        log('FAILED!')
+        log(repr(e))

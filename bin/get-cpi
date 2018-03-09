@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+"""Retrieve CPI from BLS.
+
+We are currently getting the urban consumer all items index without
+seasonal adjustment for the entire US. All this is specified by the
+'seriesid' parameter.
+"""
+
+import argparse
+import json
+import requests
+
+from datetime import datetime
+
+from datasimple.cli import log
+
+
+def _create_post(start_yr, end_yr):
+    log('Request CPI from [!g]{}[!/g] to [!g]{}[!/g]', start_yr, end_yr)
+
+    return requests.post(
+        'https://api.bls.gov/publicAPI/v1/timeseries/data/',
+        headers={
+            'Content-type': 'application/json'
+        },
+        data=json.dumps({
+            'seriesid': ['CUUR0000SA0'],
+            'startyear': start_yr,
+            'endyear': end_yr
+        })
+    )
+
+
+def _get_one(start_yr, end_yr):
+    fn = 'cpi.{:4d}-{:4d}.json'.format(start_yr, end_yr)
+    log('CPI from [!g]{}[!/g] to [!g]{}[!/g] => [!c]{}[!/c]', start_yr, end_yr, fn)
+    with open(fn, 'w') as outp:
+        js = _create_post(start_yr, end_yr).json()
+        outp.write(json.dumps(js, indent=2))
+    return fn
+
+
+def _get_all():
+    yield _get_one(1992, 2001)
+    yield _get_one(2002, 2011)
+    yield _get_one(2011, datetime.now().year)
+
+
+def _cpi_consolidate(cpi_fns, combined_fn):
+    log('Reading CPI Values back in for check')
+    cpi_years = {}
+
+    for json_fn in sorted(cpi_fns):
+        log('Reading CPI file [!c]{}[!/c]', json_fn)
+        with open(json_fn) as inp:
+            json_data = json.load(inp)
+
+        for series in json_data['Results']['series']:
+            for rec in series['data']:
+                yr = int(rec['year'])
+                assert yr > 0
+                cpi = float(rec['value'])
+                assert cpi > 0.0
+                mth = int(rec['period'].lstrip('M').lstrip('0'))  # M01 = Jan
+                assert mth >= 1 and mth <= 12
+                cpi_years[(yr, mth)] = cpi
+
+    log('Collected CPI for [!g]{}[!/g] periods', len(cpi_years))
+
+    periods = [
+        {'Year': int(yr), 'Month': int(mth), 'CPI': float(cpi)}
+        for (yr, mth), cpi in sorted(cpi_years.items())
+    ]
+    with open(combined_fn, 'w') as outp:
+        json.dump(periods, outp)
+
+    log('Created [!c]{:s}[!/c]', combined_fn)
+    for rec in periods:
+        log('[!g]{Year:4d}-{Month:2d}[!/g] [!c]{CPI:.4f}[!/c]', **rec)
+
+
+def main():
+    """Entry point - retrieve CPI from 1992 to today."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c', '--combined',
+        help='Combined JSON file to create',
+        required=False,
+        default='period.json',
+        type=str
+    )
+    args = parser.parse_args()
+
+    _cpi_consolidate(
+        list(_get_all()),
+        args.combined
+    )
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+"""Read CSV from stdin, perform filters, and write to stdout."""
+
+import argparse
+import csv
+import sys
+
+from datasimple.cli import log
+
+
+def parse_filt(s):
+    """Parse and return a filter expression."""
+    parts = s.split('=')
+    if len(parts) != 2:
+        raise ValueError('Could not understand filter {}'.format(s))
+    f = tuple(s.strip() for s in parts)
+    log('[!r]FILTER[!/r]: {}={}', *f)
+    return f
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'filters',
+        metavar='FILTER',
+        type=str,
+        nargs='+',
+        help='Filter in the form "field=value"'
+    )
+    args = parser.parse_args()
+
+    filters = [parse_filt(f) for f in args.filters]
+
+    cols = None
+    read, written, skipped = 0, 0, 0
+    for row in csv.reader(sys.stdin):
+        if cols is None:
+            cols = list(row)
+            write = csv.DictWriter(sys.stdout, cols, quoting=csv.QUOTE_ALL)
+            write.writerow(dict((c, c) for c in cols))
+            continue
+
+        rec = dict(zip(cols, row))
+        read += 1
+
+        match_filter = True
+        for name, val in filters:
+            if rec[name].strip().lower() != val.lower():
+                match_filter = False
+                break
+
+        if not match_filter:
+            skipped += 1
+            continue
+
+        write.writerow(rec)
+        written += 1
+
+    sys.stdout.flush()
+
+    log('Records Read:    [!g]{:12,d}[!/g]', read)
+    log('Records Skipped: [!g]{:12,d}[!/g]', skipped)
+    log('Records Written: [!g]{:12,d}[!/g]', written)
+
+
+if __name__ == '__main__':
+    main()

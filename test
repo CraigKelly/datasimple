@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT_NAME=$(readlink -f "${BASH_SOURCE[0]}")
+sd=$(dirname "${SCRIPT_NAME}")
+SCRIPT_DIR="$( cd "${sd}" && pwd -P )"
+
+cd "${SCRIPT_DIR}"
+
+python3 setup.py test

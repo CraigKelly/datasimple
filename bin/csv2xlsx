@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+
+"""Simple CSV to XLSX utility.
+
+The specified CSV is added to the workbook name. Column mappings are hard coded
+and are based on the output of ./post-fc-rep.py. Missing workbooks are created.
+Worksheets with the same name are overwritten.
+
+It would be nice to have a generic version one day :)
+"""
+
+import csv
+import os.path as pth
+
+from contextlib import closing
+from itertools import chain
+
+from datasimple.cli import log
+from datasimple.xl import XlsxImporter
+
+
+def _yr_fld(fld_base):
+    YEARS = 5
+    return ['{:s}{:d}'.format(fld_base, i) for i in range(1, YEARS+1)]
+
+
+def _flat(*args):
+    return list(chain(*args))
+
+
+class CsvImporter(XlsxImporter):
+    YEARS = 5
+
+    COMMA = _flat(
+        ['QtyOnHand', 'RRQty', 'QtyRemaining'],
+        _yr_fld('FCSalesQtyYr')
+    )
+
+    CURRENCY = _flat(
+        ['EffectivePrice', 'Price', 'ExtPriceRemaining'],
+        _yr_fld('FCExtEstRepairYr'),
+        _yr_fld('FCExtSalesYr'),
+        _yr_fld('FCUnitPriceYr')
+    )
+
+    def add_args(self, argparser):
+        argparser.description = 'Create an XLSX sheet from a CSV file'
+        argparser.epilog = 'NOTE: There are some legacy default column mappings'
+
+        argparser.add_argument(
+            '-i', '--input',
+            help='Name of CSV file to read',
+            required=True,
+            type=str
+        )
+
+    def validate_args(self, args):
+        if not pth.isfile(args.input):
+            raise ValueError('CSV file {} does not exist'.format(args.input))
+
+    def customize_val_mapper(self, value_mapper):
+        for col in self.COMMA:
+            value_mapper.default_mapping[col] = 'IMComma'
+        for col in self.CURRENCY:
+            value_mapper.default_mapping[col] = 'IMCurrency'
+
+    def before_save(self, args, wb, sheet):
+        pass  # No pre-save customizations
+
+    def get_data(self, args):
+        log('Reading CSV File [!y]{:s}[!/y]', args.input)
+
+        fin = open(args.input)
+        reader = csv.reader(fin)
+        cols = next(reader)
+
+        def rows():
+            with closing(fin):
+                yield from reader
+
+        return cols, rows()
+
+
+if __name__ == '__main__':
+    CsvImporter().main()

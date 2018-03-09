@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT_NAME=$(readlink -f "${BASH_SOURCE[0]}")
+sd=$(dirname "${SCRIPT_NAME}")
+SCRIPT_DIR="$( cd "${sd}" && pwd -P )"
+
+cd "${SCRIPT_DIR}"
+
+CLI=(
+    --linters "pycodestyle,pyflakes,quotes"
+)
+
+pylama "${CLI[@]}" "$@" setup.py
+pylama "${CLI[@]}" "$@" datasimple
+pylama "${CLI[@]}" -F "$@" bin
+
+shellcheck ./lint
+shellcheck ./test

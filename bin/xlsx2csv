@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+
+"""Simple XLSX to CSV utility.
+
+Based on the streaming/read-only functionality in openpyxl. This is mainly
+for HUGE Excel files that most readers can't handle.
+"""
+
+import argparse
+import csv
+import re
+import sys
+
+from datetime import datetime
+
+from openpyxl import load_workbook
+
+from datasimple.cli import log
+
+
+def _norm_ws(s):
+    return ' '.join(s.strip().split())
+
+
+def val(cell, floatdigits):
+    """Convert the openpyxl read-only cell into a value for CSV output."""
+    v = cell.value
+    if v is None:
+        return ''
+
+    t = type(v)
+    if t is str:
+        if v and v[0] == "'" and v.find("'", 1) < 0:
+            v = v[1:]  # starts with ' and doesn't have a match: old excel 'force string' method
+        return _norm_ws(v)
+    elif t is int:
+        return '{:d}'.format(v)
+    elif t is float:
+        # Up to floatdigits decimal digits, but no trailing zeroes
+        fmt = '{:.%df}' % floatdigits
+        v = fmt.format(v).rstrip('0')
+        if v.endswith('.'):
+            v += '0'
+        return v
+    elif t is datetime:
+        return '{:%m/%d/%Y}'.format(v)
+    else:
+        return _norm_ws(repr(v))
+
+
+class _col_xformer(object):
+    def __init__(self):
+        self.blank_counter = 1
+        self.previous_cols = set()
+
+    def xf(self, col):
+        col = col.strip()
+
+        col = re.sub(r'(\#)([0-9])*',   r'Num\2', col)
+        col = re.sub(r'[ -/#]+',        '_',      col)
+        col = re.sub(r'[^0-9a-zA-Z_]+', '',       col)
+
+        col = col.strip('_').replace('__', '_').strip()
+
+        if re.match(r'^[0-9]+', col):
+            col = 'n' + col  # Name can't start with number
+
+        if not col:
+            col = 'BlankName{:d}'.format(self.blank_counter)
+            self.blank_counter += 1
+
+        if col in self.previous_cols:
+            num = 0
+            while True:
+                trycol = col + ('_dup%03d' % num)
+                if trycol not in self.previous_cols:
+                    col = trycol
+                    break
+                num += 1
+
+        self.previous_cols.add(col)
+        return col
+
+
+_xfcol = _col_xformer().xf
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-i', '--input',
+        help='Name of Excel XLSX file to read',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-o', '--output',
+        help='Name of CSV file to create',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-s', '--sheetname',
+        help='Name of worksheet to extract from XLSX file',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-c', '--cols',
+        help='Assume column names are in first row and if so sanitize them',
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '-d', '--floatdigits',
+        help='Number of digits to maintain in floats (trailing 0s are removed)',
+        default=30,
+        type=int
+    )
+    parser.add_argument(
+        '-k', '--skip',
+        help='Number of rows to skip before starting (default, 0, is no skipping)',
+        default=0,
+        type=int
+    )
+    args = parser.parse_args()
+
+    log('Opening [!y]{:s}[!/y]', args.input)
+    wb = load_workbook(filename=args.input, read_only=True, data_only=True)
+
+    log('Finding worksheet [!y]{:s}[!/y]', args.sheetname)
+    ws = wb[args.sheetname]
+
+    if args.output == '-':
+        log('Using [!y]stdin[!/y] (overwriting, quoting all fields)')
+        fh = sys.stdout
+    else:
+        log('Opening [!y]{:s}[!/y] (overwriting, quoting all fields)', args.output)
+        fh = open(args.output, 'w')
+
+    writer = csv.writer(fh, quoting=csv.QUOTE_ALL)
+    count = 0
+    skip_count = int(args.skip)
+    for row in ws.rows:
+        if skip_count > 0:
+            skip_count -= 1
+            log('Skipped a row: [!g]{}[!/g] left to skip', skip_count)
+            continue
+
+        csv_vals = [val(cell, args.floatdigits) for cell in row]
+        if not any(True if v else False for v in csv_vals):
+            continue  # Nothing in the row
+
+        rowvals = [val(cell, args.floatdigits) for cell in row]
+        if count == 0 and args.cols:
+            rowvals = [_xfcol(v) for v in rowvals]
+
+        writer.writerow(rowvals)
+        count += 1
+        if count == 1:
+            log('[!g]First Row Written![!/g]')
+        elif count % 5000 == 0:
+            log('Rows: [!g]{:,d}[!/g]', count)
+
+    log('[!br][!w]DONE[!/w][!/br] -> Rows: [!g]{:,d}[!/g]', count)
+
+
+if __name__ == '__main__':
+    main()

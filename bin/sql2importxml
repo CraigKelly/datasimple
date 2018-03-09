@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+
+"""Read SQL on stdin, execute against database given on command line, and write
+our XML input format to stdout. This is basically a clone csv2importxml.py."""
+
+import argparse
+import sys
+
+from datetime import datetime
+
+from datasimple.core import comppart
+from datasimple.sqlite import connect
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-s', '--sqlite',
+        help='Database to execute query against',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-pn', '--part',
+        help='Part number field - used to create CompPart field',
+        required=False,
+        type=str,
+        default=''
+    )
+    parser.add_argument(
+        '-p', '--pretty',
+        help='Prettify output',
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '-x', '--stdlibxml',
+        help='Force use of xml.etree instead of lxml - FOR DEBUG ONLY',
+        default=False,
+        action='store_true'
+    )
+    args = parser.parse_args()
+
+    try:
+        if args.stdlibxml:
+            raise ValueError('stdlib forced!')
+
+        import lxml.etree as ET
+
+        top = ET.Element('Root', nsmap={'xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            return ET.tostring(top, pretty_print=args.pretty, standalone='yes', xml_declaration=True, encoding='UTF-8')
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+        print('WARNING: lxml is not installed, so stdlib xml will be used.', file=sys.stderr)
+
+        import xml.etree.ElementTree as ET  # import Element, SubElement, Comment, tostring
+        from xml.dom import minidom
+
+        top = ET.Element('Root', **{'xml:xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            if not args.pretty:
+                print('WARNING: NO NON-pretty printing unless you use lxml.', file=sys.stderr)
+            doc = minidom.parseString(ET.tostring(top))
+            doc.standalone = True
+            return doc.toprettyxml(indent='    ', encoding='UTF-8')
+
+    if args.pretty:
+        top.append(ET.Comment(
+            'Created with {lib:s} on {n:%Y-%b-%d} at {n:%H:%M:%S}'.format(
+                lib=ET.__name__,
+                n=datetime.now()
+        )))  # NOQA
+
+    sql = sys.stdin.read()
+    assert len(sql) > 0, 'No SQL found on stdin'
+
+    conn = connect(args.sqlite)
+    cur = conn.execute(sql)
+
+    keys, cols = None, None
+    for row in cur:
+        if not keys:
+            cols = [d[0] for d in cur.description]
+            keys = sorted(cols)
+
+        rec = dict((c, v) for c, v in zip(cols, row))
+        item = ET.SubElement(top, 'Row')
+
+        # keys in sorted order, AFTER CompPart (if we have it)
+        if args.part:
+            cp = ET.SubElement(item, 'CompPart')
+            cp.text = comppart(rec[args.part])
+        for ky in keys:
+            ele = ET.SubElement(item, ky.strip())
+            ele.text = '{}'.format(rec[ky]).strip()
+
+    txt = output()
+    if type(txt) is bytes:
+        txt = txt.decode('utf-8')
+    print(txt)
+
+
+if __name__ == '__main__':
+    main()

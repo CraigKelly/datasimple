@@ -17,12 +17,17 @@ def _files(subdir):
     ))
 
 
+def _readme():
+    with open(path.join(here, 'README.rst')) as fh:
+        return fh.read()
+
+
 if __name__ == '__main__':
     setup(
         name='datasimple',
-        version='1.0.0',
+        version='1.0.1',
         description='Utility library and scripts for simpler data-processing tasks',
-        long_description='Utility library and scripts for simpler data-processing tasks',
+        long_description=_readme(),
         url='https://github.com/CraigKelly/datasimple',
         author='Craig Kelly',
         author_email='craig.n.kelly@gmail.com',

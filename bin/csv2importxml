@@ -8,7 +8,7 @@ import sys
 
 from datetime import datetime
 
-from datasimple.base import comppart
+from datasimple.core import comppart
 
 
 def main():

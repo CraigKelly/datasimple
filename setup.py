@@ -25,7 +25,7 @@ def _readme():
 if __name__ == '__main__':
     setup(
         name='datasimple',
-        version='1.0.2',
+        version='1.0.3',
         description='Utility library and scripts for simpler data-processing tasks',
         long_description=_readme(),
         url='https://github.com/CraigKelly/datasimple',

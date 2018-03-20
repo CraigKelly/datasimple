@@ -110,6 +110,7 @@ def add_default_styles(wb):
     add_named_style(wb, 'IMComma', number_format='#,##0')
     add_named_style(wb, 'IMPercent', number_format='0.000%')
     add_named_style(wb, 'IMCurrency', number_format='_($* #,##0_);_($* (#,##0);_($* "-"??_);_(@_)')
+    add_named_style(wb, 'IMDate', number_format='m/d/yy')
 
 
 def ics_report_params(xlsx_file, sheet_name='Cover'):

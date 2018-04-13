@@ -10,7 +10,14 @@ from contextlib import contextmanager
 from nose.tools import eq_
 from openpyxl import Workbook
 
-from datasimple.xl import ValueMapper, XlsxImporter, ws_scan, ws_sheet_names, ics_report_params
+from datasimple.xl import (
+    ValueMapper,
+    XlsxImporter,
+    ws_scan,
+    ws_scan_raw,
+    ws_sheet_names,
+    ics_report_params
+)
 
 CONFIG = """
 [WORKBOOK]
@@ -250,6 +257,48 @@ def importer_tests():
             eqf_(42.42,  float(rows[0]['SomeFloat']))
             eqf_(43.43,  float(rows[1]['SomeFloat']))
             eqf_(-44.44, float(rows[2]['SomeFloat']))
+
+        # Check twice - once for create and once for rewrite
+        check_sheet()
+        check_sheet()
+
+
+def importer_tranpose_tests():
+    class TestImporter(XlsxImporter):
+        def add_args(self, argparser):
+            pass
+
+        def validate_args(self, args):
+            pass
+
+        def customize_val_mapper(self, value_mapper):
+            pass
+
+        def get_data(self, args):
+            def rows():
+                yield ['1,1', '1,2']
+                yield ['2,1', '2,2']
+            return ['c1', 'c2'], rows()
+
+    with tempfile.TemporaryDirectory() as folder:
+        fn = pth.join(folder, 'transpose_file.xlsx')
+        args = [
+            '-b', fn,
+            '-s', 'TransposeSheet',
+            '--transpose'
+        ]
+
+        assert not pth.isfile(fn), 'Previous file found? Test can not run'
+
+        def check_sheet():
+            TestImporter().main(cmdline_args=args)
+
+            assert pth.isfile(fn), 'File save failed'
+
+            rows = list(ws_scan_raw(fn, 'TransposeSheet'))
+            eq_(2, len(rows))
+            eq_(['c1', '1,1', '2,1'], rows[0])
+            eq_(['c2', '1,2', '2,2'], rows[1])
 
         # Check twice - once for create and once for rewrite
         check_sheet()

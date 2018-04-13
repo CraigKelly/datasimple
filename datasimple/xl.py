@@ -288,6 +288,7 @@ class XlsxImporter(object):
         parser.add_argument('-s', '--sheetname', type=str, required=True, help='Name of worksheet to create')
         parser.add_argument('-m', '--mapper',    type=str, default='',    help='Mapper config file to use')
         parser.add_argument('-f', '--freeze',    type=str, default='',    help='Optional cell at which to perform a Freeze Panes (e.g. use A2 to freeze top row)')
+        parser.add_argument('-t', '--transpose', action='store_true', default=False, help='If set, transpose result sheet')
 
         # Get any necessary arguments, parse everything, and then perform
         # init validation
@@ -333,11 +334,16 @@ class XlsxImporter(object):
         # Now we need the data that we'll be writing
         col_names, rows = self.get_data(args)
 
+        # simplify cell writing, and handle transpoition
+        def _write_cell(r, c, v, sty):
+            if args.transpose:
+                r, c = c, r
+            sheet.cell(row=r, column=c, value=v).style = sty
+
         # Create header row
         col_names = list(col_names)  # Go ahead and freeze column names
         for idx, col in enumerate(col_names):
-            dest = sheet.cell(row=1, column=idx+1, value=col)
-            dest.style = 'IMHeader'
+            _write_cell(1, idx+1, col, 'IMHeader')
 
         # Now create all rows
         count = 0
@@ -345,14 +351,13 @@ class XlsxImporter(object):
             for idx, val in enumerate(row):
                 col = col_names[idx]
                 style, val = mapper(col, val)
-                dest = sheet.cell(row=count+2, column=idx+1, value=val)
-                dest.style = style
+                _write_cell(count+2, idx+1, val, style)
 
             count += 1
             if count == 1:
-                log('[!g]First Row Written![!/g]')
+                log('[!g]First Record Written![!/g]')
             elif count % 5000 == 0:
-                log('Rows: [!g]{:,d}[!/g]', count)
+                log('Records: [!g]{:,d}[!/g]', count)
 
         # Finalize sheet - we autofit cols, freeze if necessary, and save
         for col in sheet.columns:

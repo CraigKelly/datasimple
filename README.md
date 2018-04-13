@@ -8,13 +8,13 @@ author: Craig Kelly
 *Source Note:* The authoritative version of this file is the Markdown version.
 The RST version is automatically created from the Markdown by `pandoc`.
 
-This is an Apache licensed library and iset of command-line tools for simpler
+This is an Apache licensed library and set of command-line tools for simple
 data processing tasks and pipelines. It is assumed that it will be used with
 tools like [dmk](https://github.com/CraigKely/dmk) and that serious work will
 be done with serious tools (like jupyterlab and scipy).
 
 If it feels like a mishmash of functionality, that's because it is. This is
-mainly a collection of odds and ends that keep getting used in projects in a
+mainly a collection of odds and ends that keeps getting used in projects in a
 very specific analytics and data science team.
 
 # Installing
@@ -26,20 +26,23 @@ $ pip install datasimple
 ```
 
 However, we use Python 3 and prefer user installs, so on a system like Ubuntu
-you might really want:
+you probably want:
 
 ```
 $ pip3 install --user --upgrade datasimple
 ```
 
-HOWEVER, The CORRECT usage in a Pipfile controlled by pipenv.
+HOWEVER, The CORRECT usage is a Pipfile controlled by pipenv.
 
 See below (in [Hacking](#hacking)) for installing in development mode if you
 need to make source code changes.
 
 # What you get
 
-The datasimple library lots of handy scripts (see `./bin`).
+The datasimple library and some handy scripts (see `./bin`). Of note is a class
+designed to help you write scripts to convert anything to Excel spreadsheets.
+(Once again, this is functionality we need for a particular business
+environment. It is expressly NOT an endorsement of Excel for data science.)
 
 # Requirements
 

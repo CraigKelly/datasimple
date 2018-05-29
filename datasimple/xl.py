@@ -1,8 +1,5 @@
 """Provide helpers for Excel files (using openpyxl)."""
 
-# TODO: Check and see if openpyxl is upto version 2.5 yet - that should include the
-#       file handle leak that is cluttering the test output with Resource Warnings
-
 import glob
 import os.path as pth
 import sys

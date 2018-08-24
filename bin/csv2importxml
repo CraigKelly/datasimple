@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-pn', '--part',
-        help='Part number field - used to create CompPart field',
+        help='Part number field - used to create CompPart field. If specified, duplicate lines will be ignored!',
         required=False,
         type=str,
         default=''
@@ -70,17 +70,28 @@ def main():
         )))  # NOQA
 
     keys = None
+    parts = set()
 
     for rec in csv.DictReader(sys.stdin):
         if not keys:
-            keys = sorted(rec.keys())
+            skips = set()
+            if args.part:
+                skips.add('CompPart')
+            keys = sorted(set(rec.keys()) - skips)
+
+        if args.part:
+            cp = comppart(rec[args.part])
+            if cp in parts:
+                continue
+            parts.add(cp)
 
         item = ET.SubElement(top, 'Row')
 
         # keys in sorted order, AFTER CompPart (if we have it)
         if args.part:
-            cp = ET.SubElement(item, 'CompPart')
-            cp.text = comppart(rec[args.part])
+            cpe = ET.SubElement(item, 'CompPart')
+            cpe.text = cp
+
         for ky in keys:
             ele = ET.SubElement(item, ky.strip())
             ele.text = rec[ky].strip()

@@ -28,14 +28,14 @@ The normal way:
 
 ::
 
-    $ pip install datasimple
+   $ pip install datasimple
 
 However, we use Python 3 and prefer user installs, so on a system like
 Ubuntu you probably want:
 
 ::
 
-    $ pip3 install --user --upgrade datasimple
+   $ pip3 install --user --upgrade datasimple
 
 HOWEVER, The CORRECT usage is a Pipfile controlled by pipenv.
 

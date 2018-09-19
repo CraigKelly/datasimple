@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+
+"""Simple XLSX to XML For ICS Import."""
+
+# pylama:ignore=E306
+
+import argparse
+import re
+import sys
+
+from datetime import datetime
+
+from openpyxl import load_workbook
+
+from datasimple.core import comppart
+from datasimple.cli import log
+
+
+def _norm_ws(s):
+    return ' '.join(s.strip().split())
+
+
+def val(cell, floatdigits):
+    """Convert the openpyxl read-only cell into a value for CSV output."""
+    v = cell.value
+    if v is None:
+        return ''
+
+    t = type(v)
+    if t is str:
+        if v and v[0] == "'" and v.find("'", 1) < 0:
+            v = v[1:]  # starts with ' and doesn't have a match: old excel 'force string' method
+        return _norm_ws(v)
+    elif t is int:
+        return '{:d}'.format(v)
+    elif t is float:
+        # Up to floatdigits decimal digits, but no trailing zeroes
+        fmt = '{:.%df}' % floatdigits
+        v = fmt.format(v).rstrip('0')
+        if v.endswith('.'):
+            v += '0'
+        return v
+    elif t is datetime:
+        return '{:%m/%d/%Y}'.format(v)
+    else:
+        return _norm_ws(repr(v))
+
+
+class _col_xformer(object):
+    def __init__(self):
+        self.blank_counter = 1
+        self.previous_cols = set()
+
+    def xf(self, col):
+        col = col.strip()
+
+        col = re.sub(r'(\#)([0-9])*',   r'Num\2', col)
+        col = re.sub(r'[ -/#]+',        '_',      col)
+        col = re.sub(r'[^0-9a-zA-Z_]+', '',       col)
+
+        col = col.strip('_').replace('__', '_').strip()
+
+        if re.match(r'^[0-9]+', col):
+            col = 'n' + col  # Name can't start with number
+
+        if not col:
+            col = 'BlankName{:d}'.format(self.blank_counter)
+            self.blank_counter += 1
+
+        if col in self.previous_cols:
+            num = 0
+            while True:
+                trycol = col + ('_dup%03d' % num)
+                if trycol not in self.previous_cols:
+                    col = trycol
+                    break
+                num += 1
+
+        self.previous_cols.add(col)
+        return col
+
+
+_xfcol = _col_xformer().xf
+
+
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-i', '--input',
+        help='Name of Excel XLSX file to read',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-o', '--output',
+        help='Name of XML file to create',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-s', '--sheetname',
+        help='Name of worksheet to extract from XLSX file',
+        required=True,
+        type=str
+    )
+    parser.add_argument(
+        '-k', '--skip',
+        help='Number of rows to skip before starting (default, 0, is no skipping)',
+        default=0,
+        type=int
+    )
+    parser.add_argument(
+        '-p', '--pretty',
+        help='Prettify XML output',
+        default=False,
+        action='store_true'
+    )
+    args = parser.parse_args()
+
+    log('Opening [!y]{:s}[!/y]', args.input)
+    wb = load_workbook(filename=args.input, read_only=True, data_only=True)
+
+    log('Finding worksheet [!y]{:s}[!/y]', args.sheetname)
+    ws = wb[args.sheetname]
+
+    if args.output == '-':
+        log('Using [!y]stdout[!/y]')
+        fh = sys.stdout
+        def cleanup():
+            fh.flush()
+    else:
+        log('Opening [!y]{:s}[!/y]', args.output)
+        fh = open(args.output, 'w')
+        def cleanup():
+            fh.flush()
+            fh.close()
+
+    try:
+        import lxml.etree as ET
+
+        top = ET.Element('Root', nsmap={'xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            return ET.tostring(top, pretty_print=args.pretty, standalone='yes', xml_declaration=True, encoding='UTF-8')
+    except Exception as e:
+        log(e)
+        log('[!y]WARNING[!/y]: lxml is not installed, so using stdlib xml')
+        if not args.pretty:
+            log('[!y]WARNING[!/y]: this means that pretty printing has been forced')
+
+        import xml.etree.ElementTree as ET
+        from xml.dom import minidom
+
+        top = ET.Element('Root', **{'xml:xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
+
+        def output():
+            doc = minidom.parseString(ET.tostring(top))
+            doc.standalone = True
+            return doc.toprettyxml(index='    ', encoding='UTF-8')
+
+    if args.pretty:
+        top.append(ET.Comment(
+            'Created with {lib} on {n:%Y-%b-%d} at {n:%H:%M:%S}'.format(
+                lib=ET.__name__,
+                n=datetime.now()
+            )
+        ))  #NOQA
+
+    cols = None
+    write_keys = None
+    parts = set()
+    skip_count = int(args.skip)
+    count = 0
+
+    for row in ws.rows:
+        if skip_count > 0:
+            skip_count -= 1
+            log('Skipped a row: [!g]{}[!/g] left to skip', skip_count)
+            continue
+
+        raw_vals = [val(cell, args.floatdigits) for cell in row]
+        if not any(True if v else False for v in raw_vals):
+            continue  # Nothing in the row
+
+        if not cols:
+            # Get cols
+            cols = [_xfcol(v) for v in raw_vals]
+            # Figure out keys (with output order)
+            write_keys = set(cols)
+            if args.part:
+                write_keys.discard('CompPart')
+            write_keys = sorted(write_keys)
+            continue
+
+        rec = dict(zip(cols, raw_vals))
+
+        if args.part:
+            cp = comppart(rec[args.part])
+            if cp in parts or not cp:
+                continue
+            parts.add(cp)
+
+        item = ET.SubElement(top, 'Row')
+
+        if args.part:
+            cpe = ET.SubElement(item, 'CompPart')
+            cpe.text = cp
+
+        for k in write_keys:
+            ele = ET.SubElement(item, k.strip())
+            ele.text = rec[k].strip()
+
+        count += 1
+        if count == 1:
+            log('[!g]First Row Read![!/g]')
+        elif count % 5000 == 0:
+            log('Rows: [!g]{:,d}[!/g]', count)
+
+    log('[!c]Reading Completed[!/c] Writing XML -> Records: [!g]{:,d}[!/g]', count)
+
+    txt = output()
+    if type(txt) is bytes:
+        txt = txt.decode('utf-8')
+    fh.write(txt)
+    fh.write('\n')
+    cleanup()
+
+    log('[!br][!w]DONE[!/w][!/br]')
+
+
+if __name__ == '__main__':
+    main()

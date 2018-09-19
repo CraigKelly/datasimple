@@ -20,7 +20,7 @@ def _norm_ws(s):
     return ' '.join(s.strip().split())
 
 
-def val(cell, floatdigits):
+def val(cell):
     """Convert the openpyxl read-only cell into a value for CSV output."""
     v = cell.value
     if v is None:
@@ -34,9 +34,7 @@ def val(cell, floatdigits):
     elif t is int:
         return '{:d}'.format(v)
     elif t is float:
-        # Up to floatdigits decimal digits, but no trailing zeroes
-        fmt = '{:.%df}' % floatdigits
-        v = fmt.format(v).rstrip('0')
+        v = '{:.2f}'.format(v).rstrip('0')
         if v.endswith('.'):
             v += '0'
         return v
@@ -116,6 +114,12 @@ def main():
         default=False,
         action='store_true'
     )
+    parser.add_argument(
+        '-pn', '--part',
+        help='Compressed Part source - will also be used to de-dup rows',
+        default='',
+        type=str
+    )
     args = parser.parse_args()
 
     log('Opening [!y]{:s}[!/y]', args.input)
@@ -179,7 +183,7 @@ def main():
             log('Skipped a row: [!g]{}[!/g] left to skip', skip_count)
             continue
 
-        raw_vals = [val(cell, args.floatdigits) for cell in row]
+        raw_vals = [val(cell) for cell in row]
         if not any(True if v else False for v in raw_vals):
             continue  # Nothing in the row
 

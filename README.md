@@ -29,7 +29,7 @@ However, we use Python 3 and prefer user installs, so on a system like Ubuntu
 you probably want:
 
 ```
-$ pip3 install --user --upgrade datasimple
+$ python3 -m pip install --user --upgrade datasimple
 ```
 
 HOWEVER, The CORRECT usage is a Pipfile controlled by pipenv.
@@ -75,7 +75,7 @@ Craig (the maintainer) for this plugin. NOTE: if even ONE PERSON contacts me
 I'll make that plugin public :)
 
 If you don't currently have pylama installed, you can get the latest installed
-for your user with `pip3 install --user --upgrade pylama`.
+for your user with `python3 -m pip install --user --upgrade pylama`.
 
 You should also test using the `./test` script in the root of this repo. It
 runs tests using nosetests. Our setup also requires the package nose-exclude.

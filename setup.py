@@ -25,7 +25,7 @@ def _readme():
 if __name__ == '__main__':
     setup(
         name='datasimple',
-        version='1.0.6',
+        version='1.0.7',
         description='Utility library and scripts for simpler data-processing tasks',
         long_description=_readme(),
         url='https://github.com/CraigKelly/datasimple',
@@ -46,9 +46,9 @@ if __name__ == '__main__':
         python_requires='>=3.4',
         install_requires=[
             'colorclass>=2.2.0',
-            'openpyxl>=2.5.2',
-            'lxml>=4.2.1',
-            'requests>=2.18.4',
+            'openpyxl>=2.5.7',
+            'lxml>=4.2.5',
+            'requests>=2.19.1',
             'terminaltables>=3.1.0',
         ],
 

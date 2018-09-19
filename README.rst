@@ -35,7 +35,7 @@ Ubuntu you probably want:
 
 ::
 
-   $ pip3 install --user --upgrade datasimple
+   $ python3 -m pip install --user --upgrade datasimple
 
 HOWEVER, The CORRECT usage is a Pipfile controlled by pipenv.
 
@@ -86,7 +86,8 @@ must install. Currently it also expects a pylama linter plugin called
 PERSON contacts me I’ll make that plugin public :)
 
 If you don’t currently have pylama installed, you can get the latest
-installed for your user with ``pip3 install --user --upgrade pylama``.
+installed for your user with
+``python3 -m pip install --user --upgrade pylama``.
 
 You should also test using the ``./test`` script in the root of this
 repo. It runs tests using nosetests. Our setup also requires the package
